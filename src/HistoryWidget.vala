@@ -66,6 +66,13 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         }
     }
 
+    public void clear_history () {
+        clipboard_text_set.clear ();
+        clipboard_item_list.@foreach ((child) => {
+            child.destroy ();
+        });
+    }
+
     private class ItemRow : Gtk.ListBoxRow {
         public string text { get; construct; }
         public string prettier_text { get; construct; }

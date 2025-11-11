@@ -5,6 +5,7 @@
 
 public class Clipboard.Indicator : Wingpanel.Indicator {
     private static GLib.Settings settings;
+    private static GLib.Settings gnome_privacy_settings;
     private Gtk.Image panel_icon;
     private HistoryWidget history_widget;
 
@@ -23,7 +24,10 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
 
         settings = new GLib.Settings ("io.github.ellie_commons.indicator-clipboard");
         settings.bind ("visible", this, "visible", GLib.SettingsBindFlags.DEFAULT);
+        gnome_privacy_settings = new Settings ("org.gnome.desktop.privacy");
+        gnome_privacy_settings.bind ("remember-recent-files", this, "visible", GET);
     }
+
 
     public override Gtk.Widget get_display_widget () {
         if (panel_icon == null) {
@@ -32,9 +36,12 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
             if (server_type == Wingpanel.IndicatorManager.ServerType.GREETER) {
                 this.visible = false;
             } else {
-                // var visible_settings = new Settings ("io.elementary.desktop.wingpanel.clipboard");
-                // visible_settings.bind ("show-indicator", this, "visible", SettingsBindFlags.DEFAULT);
-                this.visible = true;
+                this.notify["visible"].connect (() => {
+                    warning ("visible changed to %s", visible.to_string ());
+                    if (!visible) {
+                        ((HistoryWidget) (get_widget ())).clear_history ();
+                    }
+                });
             }
         }
 
