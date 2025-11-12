@@ -105,4 +105,14 @@ public class Clipboard.HistoryWidget : Gtk.Box {
     public uint get_n_items () {
         return clipboard_text_set.size;
     }
+
+
+    public void clear_history () {
+        clipboard_text_set.clear ();
+        clipboard_item_list.@foreach ((child) => {
+            child.destroy ();
+        });
+
+        changed ();
+    }
 }

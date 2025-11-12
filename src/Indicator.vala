@@ -27,10 +27,17 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
 
     public override Gtk.Widget get_display_widget () {
         if (display_widget == null) {
-            display_widget = new Gtk.Image.from_icon_name (
+            var panel_icon = new Gtk.Image.from_icon_name (
                 "edit-copy-symbolic",
                 Gtk.IconSize.SMALL_TOOLBAR
             );
+
+            display_widget = new Gtk.EventBox () {
+                child = panel_icon
+            };
+
+            display_widget.events = BUTTON_PRESS_MASK;
+
 
             if (server_type == Wingpanel.IndicatorManager.ServerType.GREETER) {
                 this.visible = false;
@@ -40,6 +47,18 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
 
             get_widget (); // Initialize history widget
             history_widget.changed.connect (update_tooltip);
+
+            // EventController does not work?
+            display_widget.button_press_event.connect ((event) => {
+                if (event.button == 3) {
+                    history_widget.clear_history ();
+                    return true;
+                }
+
+                return false;
+            });
+
+            display_widget.show_all ();
             update_tooltip ();
         }
 
@@ -70,18 +89,21 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
         string description;
         if (n_items > 0) {
             description = ngettext (
-                _("Clipboard: %u item"),
-                _("Clipboard: %u items"),
+                _("Clipboard Manager: %u item"),
+                _("Clipboard Manager: %u items"),
                 n_items
             ).printf (n_items);
         } else {
-            description = _("Clipboard: Empty");
+            description = _("Clipboard Manager: Empty");
         }
 
-        string accel_label = n_items > 0 ? _("Middle-click to clear") : "";
-        accel_label = Granite.TOOLTIP_SECONDARY_TEXT_MARKUP.printf (accel_label);
-
-        display_widget.tooltip_markup = "%s\n%s".printf (description, accel_label);
+        if (n_items > 0) {
+            string accel_label = n_items > 0 ? _("Middle-click to clear") : "";
+            accel_label = Granite.TOOLTIP_SECONDARY_TEXT_MARKUP.printf (accel_label);
+            display_widget.tooltip_markup = "%s\n%s".printf (description, accel_label);
+        } else {
+            display_widget.tooltip_markup = "%s".printf (description);
+        }
     }
 }
 
