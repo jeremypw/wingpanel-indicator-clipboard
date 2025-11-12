@@ -10,6 +10,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
     private uint wait_timeout = 0;
 
     public signal void close_request ();
+    public signal void changed ();
 
     construct {
         clipboard_text_set = new Gee.HashSet<string> ();
@@ -52,6 +53,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
                         clipboard_item_list.prepend (new_item);
                         clipboard_item_list.select_row (new_item);
                         clipboard_item_list.show_all ();
+                        changed ();
                     }
                 });
             }
@@ -97,5 +99,10 @@ public class Clipboard.HistoryWidget : Gtk.Box {
 
             add (label);
         }
+
+    }
+
+    public uint get_n_items () {
+        return clipboard_text_set.size;
     }
 }

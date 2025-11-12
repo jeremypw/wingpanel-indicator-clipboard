@@ -5,7 +5,7 @@
 
 public class Clipboard.Indicator : Wingpanel.Indicator {
     private static GLib.Settings settings;
-    private Gtk.Image panel_icon;
+    private Gtk.Widget display_widget;
     private HistoryWidget history_widget;
 
     public Wingpanel.IndicatorManager.ServerType server_type { get; construct set; }
@@ -26,20 +26,24 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
     }
 
     public override Gtk.Widget get_display_widget () {
-        if (panel_icon == null) {
-            panel_icon = new Gtk.Image.from_icon_name ("edit-copy-symbolic", Gtk.IconSize.SMALL_TOOLBAR);
+        if (display_widget == null) {
+            display_widget = new Gtk.Image.from_icon_name (
+                "edit-copy-symbolic",
+                Gtk.IconSize.SMALL_TOOLBAR
+            );
 
             if (server_type == Wingpanel.IndicatorManager.ServerType.GREETER) {
                 this.visible = false;
             } else {
-                // var visible_settings = new Settings ("io.elementary.desktop.wingpanel.clipboard");
-                // visible_settings.bind ("show-indicator", this, "visible", SettingsBindFlags.DEFAULT);
                 this.visible = true;
             }
+
+            get_widget (); // Initialize history widget
+            history_widget.changed.connect (update_tooltip);
+            update_tooltip ();
         }
 
-        get_widget ();
-        return panel_icon;
+        return display_widget;
     }
 
     public override Gtk.Widget? get_widget () {
@@ -59,6 +63,25 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
     }
 
     public override void closed () {
+    }
+
+    private void update_tooltip () {
+        uint n_items = history_widget.get_n_items ();
+        string description;
+        if (n_items > 0) {
+            description = ngettext (
+                _("Clipboard: %u item"),
+                _("Clipboard: %u items"),
+                n_items
+            ).printf (n_items);
+        } else {
+            description = _("Clipboard: Empty");
+        }
+
+        string accel_label = n_items > 0 ? _("Middle-click to clear") : "";
+        accel_label = Granite.TOOLTIP_SECONDARY_TEXT_MARKUP.printf (accel_label);
+
+        display_widget.tooltip_markup = "%s\n%s".printf (description, accel_label);
     }
 }
 
