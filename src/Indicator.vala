@@ -23,9 +23,6 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
         Intl.textdomain (GETTEXT_PACKAGE);
 
         settings = new GLib.Settings ("io.github.ellie_commons.indicator-clipboard");
-        settings.bind ("visible", this, "visible", GLib.SettingsBindFlags.DEFAULT);
-        gnome_privacy_settings = new Settings ("org.gnome.desktop.privacy");
-        gnome_privacy_settings.bind ("remember-recent-files", this, "visible", GET);
     }
 
 
@@ -36,27 +33,24 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
             if (server_type == Wingpanel.IndicatorManager.ServerType.GREETER) {
                 this.visible = false;
             } else {
-                this.notify["visible"].connect (() => {
-                    warning ("visible changed to %s", visible.to_string ());
-                    if (!visible) {
-                        ((HistoryWidget) (get_widget ())).clear_history ();
-                    }
-                });
+                gnome_privacy_settings = new Settings ("org.gnome.desktop.privacy");
+                gnome_privacy_settings.bind ("remember-recent-files", this, "visible", GET);
             }
         }
 
-        get_widget ();
         return panel_icon;
     }
 
     public override Gtk.Widget? get_widget () {
         if (history_widget == null &&
             server_type == Wingpanel.IndicatorManager.ServerType.SESSION) {
-                history_widget = new HistoryWidget ();
-                history_widget.close_request.connect (() => {
-                    close ();
-                });
-                history_widget.wait_for_text ();
+
+            history_widget = new HistoryWidget ();
+            history_widget.close_request.connect (() => {
+                close ();
+            });
+            this.notify["visible"].connect (update_visibility);
+            update_visibility ();
         }
 
         return history_widget;
@@ -66,6 +60,15 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
     }
 
     public override void closed () {
+    }
+
+    private void update_visibility () {
+        if (!visible) {
+            history_widget.clear_history ();
+            history_widget.stop_waiting_for_text ();
+        } else {
+            history_widget.wait_for_text ();
+        }
     }
 }
 
