@@ -4,13 +4,13 @@
  */
 
 public class Clipboard.Indicator : Wingpanel.Indicator {
-    private static GLib.Settings settings;
+    public static GLib.Settings settings;
     private static GLib.Settings gnome_privacy_settings;
     private const string NORMAL_ICON_NAME = "edit-copy-symbolic";
     private const string STOPPED_ICON_NAME = "task-past-due-symbolic";
     private Gtk.Image panel_icon;
     private HistoryWidget history_widget;
-    private Gtk.Box inactive_widget;
+    private Gtk.Box privacy_widget;
     public bool always_hide { get; set; }
     public bool privacy_on { get; set; }
 
@@ -37,12 +37,12 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
             label = Granite.TOOLTIP_SECONDARY_TEXT_MARKUP.printf (_("History is off in the Privacy and Security settings")),
             use_markup = true
         };
-        inactive_widget = new Gtk.Box (VERTICAL, 0) {
+        privacy_widget = new Gtk.Box (VERTICAL, 0) {
             margin_start = 6,
             margin_end = 6
         };
-        inactive_widget.add (inactive_header_label);
-        inactive_widget.add (inactive_subheader_label);
+        privacy_widget.add (inactive_header_label);
+        privacy_widget.add (inactive_subheader_label);
         // Ensure correct appearance before showing
         get_display_widget ();
         get_widget ();
@@ -74,13 +74,14 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
             });
 
             this.notify["privacy-on"].connect (update_appearance);
+            // this.notify["privacy-on"].connect (get_widget);
             this.notify["always-hide"].connect (update_appearance);
             update_appearance ();
         }
 
         // There doesn't seem to be a way of stopping Wingpanel showing the (blank) popover in the inactive state
         // So show informative label.
-        return !privacy_on ? history_widget : inactive_widget;
+        return !privacy_on ? history_widget : privacy_widget;
     }
 
     public override void opened () {

@@ -6,5 +6,10 @@
 		<summary>Whether indicator is hidden and inactive</summary>
 		<description>Always hide indicator if set to true. While hidden the indicator does not monitor the clipboard.</description>
 	</key>
+	<key name="active" type="b">
+		<default>true</default>
+		<summary>Whether indicator is active</summary>
+		<description>Whether the indicator is monitoring and recording the clipboard contents</description>
+	</key>
 	</schema>
 </schemalist>

@@ -12,6 +12,15 @@ public class Clipboard.HistoryWidget : Gtk.Box {
     public signal void close_request ();
 
     construct {
+        orientation = VERTICAL;
+        spacing = 6;
+
+        var active_switch = new Granite.SwitchModelButton (_("Clipboard Manager")) {
+            description = _("Monitoring the clipboard contents")
+        };
+
+        Clipboard.Indicator.settings.bind ("active", active_switch, "active", DEFAULT);
+
         clipboard_text_set = new Gee.HashSet<string> ();
 
         clipboard_item_list = new Gtk.ListBox () {
@@ -24,6 +33,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         scroll_box.hscrollbar_policy = Gtk.PolicyType.NEVER;
         scroll_box.add (clipboard_item_list);
 
+        add (active_switch);
         add (scroll_box);
         show_all ();
 
@@ -105,4 +115,52 @@ public class Clipboard.HistoryWidget : Gtk.Box {
             add (label);
         }
     }
+
+    // Taken from the Code project (https://github.com/elementary/code)
+    private class SettingSwitch : Gtk.Grid {
+        public string label { get; construct; }
+        public string settings_key { get; construct; }
+        public string description { get; construct; }
+
+        public SettingSwitch (string label, string settings_key, string description = "") {
+            Object (
+                description: description,
+                label: label,
+                settings_key: settings_key
+            );
+        }
+
+        construct {
+            var switch_widget = new Gtk.Switch () {
+                valign = CENTER
+            };
+
+            var label_widget = new Gtk.Label (label) {
+                halign = START,
+                hexpand = true,
+                mnemonic_widget = switch_widget
+            };
+
+            column_spacing = 12;
+            attach (label_widget, 0, 0);
+            attach (switch_widget, 1, 0, 1, 2);
+
+            if (description != "") {
+                var description_label = new Gtk.Label (description) {
+                    halign = START,
+                    wrap = true,
+                    xalign = 0
+                };
+                description_label.get_style_context ().add_class (Gtk.STYLE_CLASS_DIM_LABEL);
+                description_label.get_style_context ().add_class (Granite.STYLE_CLASS_SMALL_LABEL);
+
+                attach (description_label, 0, 1);
+
+                switch_widget.get_accessible ().accessible_description = description;
+            }
+
+            Clipboard.Indicator.settings.bind (settings_key, switch_widget, "active", DEFAULT);
+        }
+    }
+
 }
