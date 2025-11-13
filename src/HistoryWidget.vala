@@ -4,6 +4,9 @@
  */
 
 public class Clipboard.HistoryWidget : Gtk.Box {
+    private const string ACTIVE_DESCRIPTION = N_("Monitoring the clipboard contents");
+    private const string PRIVACY_DESCRIPTION = N_("Privacy Mode is On");
+
     private Gee.HashSet<string> clipboard_text_set;
     private Gtk.ListBox clipboard_item_list;
     private string last_text = "";
@@ -21,7 +24,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         spacing = 6;
 
         active_switch = new Granite.SwitchModelButton (_("Clipboard Manager")) {
-            description = _("Monitoring the clipboard contents")
+            description = _(ACTIVE_DESCRIPTION)
         };
 
         var inactive_header_label = new Granite.HeaderLabel (_("The ClipboardManager is disabled"));
@@ -87,7 +90,6 @@ public class Clipboard.HistoryWidget : Gtk.Box {
                     var new_item = new ItemRow (text);
                     clipboard_item_list.prepend (new_item);
                     clipboard_item_list.select_row (new_item);
-                    clipboard_item_list.show_all ();
                 }
             });
         }
@@ -110,8 +112,10 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         if (privacy_on) {
             stop_waiting_for_text ();
             clear_history ();
+            active_switch.description = _(PRIVACY_DESCRIPTION);
         } else {
             wait_for_text ();
+            active_switch.description = _(ACTIVE_DESCRIPTION);
         }
     }
 
