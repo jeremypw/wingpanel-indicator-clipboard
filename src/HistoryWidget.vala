@@ -8,6 +8,11 @@ public class Clipboard.HistoryWidget : Gtk.Box {
     private Gtk.ListBox clipboard_item_list;
     private string last_text = "";
     private uint wait_timeout = 0;
+    private Granite.SwitchModelButton active_switch;
+    private Gtk.Box privacy_widget;
+    private Gtk.ScrolledWindow scroll_box;
+    private Gtk.Stack stack;
+    private unowned Gtk.Clipboard clipboard;
 
     public signal void close_request ();
 
@@ -15,9 +20,21 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         orientation = VERTICAL;
         spacing = 6;
 
-        var active_switch = new Granite.SwitchModelButton (_("Clipboard Manager")) {
+        active_switch = new Granite.SwitchModelButton (_("Clipboard Manager")) {
             description = _("Monitoring the clipboard contents")
         };
+
+        var inactive_header_label = new Granite.HeaderLabel (_("The ClipboardManager is disabled"));
+        var inactive_subheader_label = new Gtk.Label ("") {
+            label = Granite.TOOLTIP_SECONDARY_TEXT_MARKUP.printf (_("History is off in the Privacy and Security settings")),
+            use_markup = true
+        };
+        privacy_widget = new Gtk.Box (VERTICAL, 0) {
+            margin_start = 6,
+            margin_end = 6
+        };
+        privacy_widget.add (inactive_header_label);
+        privacy_widget.add (inactive_subheader_label);
 
         Clipboard.Indicator.settings.bind ("active", active_switch, "active", DEFAULT);
 
@@ -27,14 +44,20 @@ public class Clipboard.HistoryWidget : Gtk.Box {
             selection_mode = SINGLE
         };
         clipboard_item_list.set_placeholder (new Gtk.Label (_("Clipboard Empty")));
-        var scroll_box = new Gtk.ScrolledWindow (null, null);
+
+        scroll_box = new Gtk.ScrolledWindow (null, null);
         scroll_box.max_content_height = 512;
         scroll_box.propagate_natural_height = true;
         scroll_box.hscrollbar_policy = Gtk.PolicyType.NEVER;
         scroll_box.add (clipboard_item_list);
 
+        stack = new Gtk.Stack ();
+        stack.add_named (scroll_box, "clipboard");
+        stack.add_named (privacy_widget, "privacy");
+
         add (active_switch);
-        add (scroll_box);
+        add (stack);
+
         show_all ();
 
         clipboard_item_list.row_activated.connect ((row) => {
@@ -43,6 +66,8 @@ public class Clipboard.HistoryWidget : Gtk.Box {
             clipboard.set_text (text, -1);
             close_request ();
         });
+
+        clipboard = Gtk.Clipboard.get_default (Gdk.Display.get_default ());
     }
 
     ~HistoryWidget () {
@@ -51,29 +76,25 @@ public class Clipboard.HistoryWidget : Gtk.Box {
 
     // No notifications from clipboard? So poll it periodically for new text
     public void wait_for_text () {
-        var clipboard = Gtk.Clipboard.get_default (Gdk.Display.get_default ());
-        wait_timeout = Timeout.add_full (Priority.LOW, 1000, () => {
-            if (clipboard.wait_is_text_available ()) {
-                clipboard.request_text ((cb, text) => {
-                    if (text != last_text && !clipboard_text_set.contains (text)) {
-                        last_text = text;
-                        clipboard_text_set.add (text);
-                        var new_item = new ItemRow (text);
-                        clipboard_item_list.prepend (new_item);
-                        clipboard_item_list.select_row (new_item);
-                        clipboard_item_list.show_all ();
-                    }
-                });
-            }
-
-            return Source.CONTINUE;
-        });
+        clipboard.owner_change.connect (on_clipboard_owner_change);
     }
 
-    public void stop_waiting_for_text () {
-        if (wait_timeout > 0) {
-            Source.remove (wait_timeout);
+    private void on_clipboard_owner_change () requires (clipboard != null) {
+        if (clipboard.wait_is_text_available ()) {
+            clipboard.request_text ((cb, text) => {
+                if (!clipboard_text_set.contains (text)) {
+                    clipboard_text_set.add (text);
+                    var new_item = new ItemRow (text);
+                    clipboard_item_list.prepend (new_item);
+                    clipboard_item_list.select_row (new_item);
+                    clipboard_item_list.show_all ();
+                }
+            });
         }
+    }
+
+    public void stop_waiting_for_text () requires (clipboard != null) {
+        clipboard.owner_change.disconnect (on_clipboard_owner_change);
     }
 
     public void clear_history () {
@@ -81,6 +102,17 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         clipboard_item_list.@foreach ((child) => {
             child.destroy ();
         });
+    }
+
+    public void set_privacy_mode (bool privacy_on) {
+        active_switch.sensitive = !privacy_on;
+        stack.visible_child_name = privacy_on ? "privacy" : "clipboard";
+        if (privacy_on) {
+            stop_waiting_for_text ();
+            clear_history ();
+        } else {
+            wait_for_text ();
+        }
     }
 
     private class ItemRow : Gtk.ListBoxRow {
@@ -115,52 +147,4 @@ public class Clipboard.HistoryWidget : Gtk.Box {
             add (label);
         }
     }
-
-    // Taken from the Code project (https://github.com/elementary/code)
-    private class SettingSwitch : Gtk.Grid {
-        public string label { get; construct; }
-        public string settings_key { get; construct; }
-        public string description { get; construct; }
-
-        public SettingSwitch (string label, string settings_key, string description = "") {
-            Object (
-                description: description,
-                label: label,
-                settings_key: settings_key
-            );
-        }
-
-        construct {
-            var switch_widget = new Gtk.Switch () {
-                valign = CENTER
-            };
-
-            var label_widget = new Gtk.Label (label) {
-                halign = START,
-                hexpand = true,
-                mnemonic_widget = switch_widget
-            };
-
-            column_spacing = 12;
-            attach (label_widget, 0, 0);
-            attach (switch_widget, 1, 0, 1, 2);
-
-            if (description != "") {
-                var description_label = new Gtk.Label (description) {
-                    halign = START,
-                    wrap = true,
-                    xalign = 0
-                };
-                description_label.get_style_context ().add_class (Gtk.STYLE_CLASS_DIM_LABEL);
-                description_label.get_style_context ().add_class (Granite.STYLE_CLASS_SMALL_LABEL);
-
-                attach (description_label, 0, 1);
-
-                switch_widget.get_accessible ().accessible_description = description;
-            }
-
-            Clipboard.Indicator.settings.bind (settings_key, switch_widget, "active", DEFAULT);
-        }
-    }
-
 }

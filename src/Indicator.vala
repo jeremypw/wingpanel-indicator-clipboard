@@ -10,8 +10,9 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
     private const string STOPPED_ICON_NAME = "task-past-due-symbolic";
     private Gtk.Image panel_icon;
     private HistoryWidget history_widget;
-    private Gtk.Box privacy_widget;
+
     public bool always_hide { get; set; }
+    public bool active { get; set; }
     public bool privacy_on { get; set; }
 
     public Wingpanel.IndicatorManager.ServerType server_type { get; construct set; }
@@ -31,21 +32,13 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
 
         settings = new GLib.Settings ("io.github.ellie_commons.indicator-clipboard");
         settings.bind ("always-hide", this, "always-hide", DEFAULT);
+        settings.bind ("active", this, "active", DEFAULT);
 
-        var inactive_header_label = new Granite.HeaderLabel (_("The ClipboardManager is disabled"));
-        var inactive_subheader_label = new Gtk.Label ("") {
-            label = Granite.TOOLTIP_SECONDARY_TEXT_MARKUP.printf (_("History is off in the Privacy and Security settings")),
-            use_markup = true
-        };
-        privacy_widget = new Gtk.Box (VERTICAL, 0) {
-            margin_start = 6,
-            margin_end = 6
-        };
-        privacy_widget.add (inactive_header_label);
-        privacy_widget.add (inactive_subheader_label);
+
         // Ensure correct appearance before showing
         get_display_widget ();
         get_widget ();
+        update_appearance ();
     }
 
 
@@ -57,7 +50,7 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
                 this.visible = false;
             } else {
                 gnome_privacy_settings = new Settings ("org.gnome.desktop.privacy");
-                gnome_privacy_settings.bind ("remember-recent-files", this, "privacy-on", GET | INVERT_BOOLEAN);
+                gnome_privacy_settings.bind ("remember-recent-files", this, "privacy-on", DEFAULT | INVERT_BOOLEAN);
             }
         }
 
@@ -74,14 +67,12 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
             });
 
             this.notify["privacy-on"].connect (update_appearance);
-            // this.notify["privacy-on"].connect (get_widget);
             this.notify["always-hide"].connect (update_appearance);
+            this.notify["active"].connect (update_appearance);
             update_appearance ();
         }
 
-        // There doesn't seem to be a way of stopping Wingpanel showing the (blank) popover in the inactive state
-        // So show informative label.
-        return !privacy_on ? history_widget : privacy_widget;
+        return history_widget;
     }
 
     public override void opened () {
@@ -92,16 +83,14 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
     }
 
     private void update_appearance () {
-        if (privacy_on || always_hide) {
-            history_widget.clear_history ();
-            history_widget.stop_waiting_for_text ();
+        if (!active || privacy_on || always_hide) {
             panel_icon.icon_name = STOPPED_ICON_NAME;
-        } else if (!privacy_on && !always_hide) {
-            history_widget.wait_for_text ();
+        } else if (active && !privacy_on && !always_hide) {
             panel_icon.icon_name = NORMAL_ICON_NAME;
         }
 
         visible = !always_hide;
+        history_widget.set_privacy_mode (privacy_on);
     }
 }
 
