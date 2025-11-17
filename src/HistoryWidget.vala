@@ -99,6 +99,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
                     var new_item = new ItemRow (text);
                     clipboard_item_list.prepend (new_item);
                     clipboard_item_list.select_row (new_item);
+                    changed ();
                 }
             });
         }
