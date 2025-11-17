@@ -60,6 +60,14 @@ public class Clipboard.HistoryWidget : Gtk.Box {
 
         add (active_switch);
         add (stack);
+        var clear_button = new Gtk.ModelButton () {
+            text = _("Clear All Items"),
+        };
+
+        clear_button.clicked.connect (clear_history);
+
+        add (new Gtk.Separator (HORIZONTAL));
+        add (clear_button);
 
         show_all ();
 

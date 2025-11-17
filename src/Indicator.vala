@@ -34,7 +34,6 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
         settings.bind ("always-hide", this, "always-hide", DEFAULT);
         settings.bind ("active", this, "active", DEFAULT);
 
-
         // Ensure correct appearance before showing
         get_display_widget ();
         get_widget ();
