@@ -18,6 +18,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
     private unowned Gtk.Clipboard clipboard;
 
     public signal void close_request ();
+    public signal void changed ();
 
     construct {
         orientation = VERTICAL;
@@ -159,7 +160,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
             add (label);
         }
 
-        private string prettify (string text) {
+         private string prettify (string text) {
             var prettier = new StringBuilder (text);
             var ellipsis = "…";
             var double_ellipsis = ellipsis + ellipsis;
@@ -171,5 +172,9 @@ public class Clipboard.HistoryWidget : Gtk.Box {
 
             return prettier.str;
         }
+    }
+
+    public uint get_n_items () {
+        return clipboard_text_set.size;
     }
 }

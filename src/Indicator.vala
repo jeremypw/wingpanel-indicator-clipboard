@@ -9,6 +9,7 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
     private const string NORMAL_ICON_NAME = "edit-copy-symbolic";
     private const string STOPPED_ICON_NAME = "task-past-due-symbolic";
     private Gtk.Image panel_icon;
+    private Gtk.Widget display_widget;
     private HistoryWidget history_widget;
 
     public bool always_hide { get; set; }
@@ -42,8 +43,17 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
 
 
     public override Gtk.Widget get_display_widget () {
-        if (panel_icon == null) {
-            panel_icon = new Gtk.Image.from_icon_name (NORMAL_ICON_NAME, Gtk.IconSize.SMALL_TOOLBAR);
+        if (display_widget == null) {
+            var panel_icon = new Gtk.Image.from_icon_name (
+                NORMAL_ICON_NAME,
+                Gtk.IconSize.SMALL_TOOLBAR
+            );
+
+            display_widget = new Gtk.EventBox () {
+                child = panel_icon
+            };
+
+            display_widget.events = BUTTON_PRESS_MASK;
 
             if (server_type == Wingpanel.IndicatorManager.ServerType.GREETER) {
                 this.visible = false;
@@ -51,9 +61,25 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
                 gnome_privacy_settings = new Settings ("org.gnome.desktop.privacy");
                 gnome_privacy_settings.bind ("remember-recent-files", this, "privacy-on", DEFAULT | INVERT_BOOLEAN);
             }
+
+            get_widget (); // Initialize history widget
+            history_widget.changed.connect (update_tooltip);
+
+            // EventController does not work?
+            display_widget.button_press_event.connect ((event) => {
+                if (event.button == 3) {
+                    history_widget.clear_history ();
+                    return true;
+                }
+
+                return false;
+            });
+
+            display_widget.show_all ();
+            update_tooltip ();
         }
 
-        return panel_icon;
+        return display_widget;
     }
 
     public override Gtk.Widget? get_widget () {
@@ -90,6 +116,28 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
 
         visible = !always_hide;
         history_widget.set_privacy_mode (privacy_on);
+    }
+
+    private void update_tooltip () {
+        uint n_items = history_widget.get_n_items ();
+        string description;
+        if (n_items > 0) {
+            description = ngettext (
+                _("Clipboard Manager: %u item"),
+                _("Clipboard Manager: %u items"),
+                n_items
+            ).printf (n_items);
+        } else {
+            description = _("Clipboard Manager: Empty");
+        }
+
+        if (n_items > 0) {
+            string accel_label = n_items > 0 ? _("Middle-click to clear") : "";
+            accel_label = Granite.TOOLTIP_SECONDARY_TEXT_MARKUP.printf (accel_label);
+            display_widget.tooltip_markup = "%s\n%s".printf (description, accel_label);
+        } else {
+            display_widget.tooltip_markup = "%s".printf (description);
+        }
     }
 }
 
