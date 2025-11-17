@@ -4,9 +4,16 @@
  */
 
 public class Clipboard.Indicator : Wingpanel.Indicator {
-    private static GLib.Settings settings;
+    public static GLib.Settings settings;
+    private static GLib.Settings gnome_privacy_settings;
+    private const string NORMAL_ICON_NAME = "edit-copy-symbolic";
+    private const string STOPPED_ICON_NAME = "task-past-due-symbolic";
     private Gtk.Image panel_icon;
     private HistoryWidget history_widget;
+
+    public bool always_hide { get; set; }
+    public bool active { get; set; }
+    public bool privacy_on { get; set; }
 
     public Wingpanel.IndicatorManager.ServerType server_type { get; construct set; }
 
@@ -21,44 +28,69 @@ public class Clipboard.Indicator : Wingpanel.Indicator {
         Intl.bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
         Intl.textdomain (GETTEXT_PACKAGE);
 
+        visible = true;
+
         settings = new GLib.Settings ("io.github.ellie_commons.indicator-clipboard");
-        settings.bind ("visible", this, "visible", GLib.SettingsBindFlags.DEFAULT);
+        settings.bind ("always-hide", this, "always-hide", DEFAULT);
+        settings.bind ("active", this, "active", DEFAULT);
+
+
+        // Ensure correct appearance before showing
+        get_display_widget ();
+        get_widget ();
+        update_appearance ();
     }
+
 
     public override Gtk.Widget get_display_widget () {
         if (panel_icon == null) {
-            panel_icon = new Gtk.Image.from_icon_name ("edit-copy-symbolic", Gtk.IconSize.SMALL_TOOLBAR);
+            panel_icon = new Gtk.Image.from_icon_name (NORMAL_ICON_NAME, Gtk.IconSize.SMALL_TOOLBAR);
 
             if (server_type == Wingpanel.IndicatorManager.ServerType.GREETER) {
                 this.visible = false;
             } else {
-                // var visible_settings = new Settings ("io.elementary.desktop.wingpanel.clipboard");
-                // visible_settings.bind ("show-indicator", this, "visible", SettingsBindFlags.DEFAULT);
-                this.visible = true;
+                gnome_privacy_settings = new Settings ("org.gnome.desktop.privacy");
+                gnome_privacy_settings.bind ("remember-recent-files", this, "privacy-on", DEFAULT | INVERT_BOOLEAN);
             }
         }
 
-        get_widget ();
         return panel_icon;
     }
 
     public override Gtk.Widget? get_widget () {
         if (history_widget == null &&
             server_type == Wingpanel.IndicatorManager.ServerType.SESSION) {
-                history_widget = new HistoryWidget ();
-                history_widget.close_request.connect (() => {
-                    close ();
-                });
-                history_widget.wait_for_text ();
+
+            history_widget = new HistoryWidget ();
+            history_widget.close_request.connect (() => {
+                close ();
+            });
+
+            this.notify["privacy-on"].connect (update_appearance);
+            this.notify["always-hide"].connect (update_appearance);
+            this.notify["active"].connect (update_appearance);
+            update_appearance ();
         }
 
         return history_widget;
     }
 
     public override void opened () {
+
     }
 
     public override void closed () {
+    }
+
+    private void update_appearance () {
+        if (!active || privacy_on || always_hide) {
+            panel_icon.icon_name = STOPPED_ICON_NAME;
+        } else if (active && !privacy_on && !always_hide) {
+            panel_icon.icon_name = NORMAL_ICON_NAME;
+        }
+
+        visible = !always_hide;
+        history_widget.set_privacy_mode (privacy_on);
     }
 }
 
