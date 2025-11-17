@@ -79,7 +79,7 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         }
 
         construct {
-            prettier_text = text.chomp ().chug ();
+            prettier_text = prettify (text);
 
             var label = new Gtk.Label (prettier_text) {
                 hexpand = true,
@@ -99,14 +99,25 @@ public class Clipboard.HistoryWidget : Gtk.Box {
 
             add (label);
         }
+        
+         private string prettify (string text) {
+            var prettier = new StringBuilder (text);
+            var ellipsis = "…";
+            var double_ellipsis = ellipsis + ellipsis;
+            var replacements = prettier.replace ("  ", ellipsis);
 
+            while (replacements > 0) {
+                replacements = prettier.replace (double_ellipsis, ellipsis);
+            }
+
+            return prettier.str;
+        }
     }
 
     public uint get_n_items () {
         return clipboard_text_set.size;
     }
-
-
+    
     public void clear_history () {
         clipboard_text_set.clear ();
         clipboard_item_list.@foreach ((child) => {
@@ -114,5 +125,6 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         });
 
         changed ();
+       
     }
 }
