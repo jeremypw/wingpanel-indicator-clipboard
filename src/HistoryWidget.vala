@@ -12,6 +12,8 @@ public class Clipboard.HistoryWidget : Gtk.Box {
     public signal void close_request ();
 
     construct {
+        orientation = VERTICAL;
+
         clipboard_text_set = new Gee.HashSet<string> ();
 
         clipboard_item_list = new Gtk.ListBox () {
@@ -24,7 +26,16 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         scroll_box.hscrollbar_policy = Gtk.PolicyType.NEVER;
         scroll_box.add (clipboard_item_list);
 
+        var clear_button = new Gtk.ModelButton () {
+            text = _("Clear All Items"),
+        };
+
+        clear_button.clicked.connect (clear_history);
+
         add (scroll_box);
+        add (new Gtk.Separator (HORIZONTAL));
+        add (clear_button);
+
         show_all ();
 
         clipboard_item_list.row_activated.connect ((row) => {
@@ -64,6 +75,14 @@ public class Clipboard.HistoryWidget : Gtk.Box {
         if (wait_timeout > 0) {
             Source.remove (wait_timeout);
         }
+    }
+
+    public void clear_history () {
+        clipboard_text_set.clear ();
+        clipboard_item_list.foreach ((child) => {
+            clipboard_item_list.remove (child);
+            child.destroy ();
+        });
     }
 
     private class ItemRow : Gtk.ListBoxRow {
